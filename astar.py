@@ -26,6 +26,8 @@ def astar(grid, rows, cols, start, end, heuristic="manhattan"):
 
         for neighbour in get_neighbours(current_row, current_col, rows, cols, grid):
             new_cost = cumulative_cost[(current_row, current_col)] + grid[neighbour[0]][neighbour[1]]
+            if grid[neighbour[0]][neighbour[1]] < grid[current_row][current_col]:
+                new_cost = cumulative_cost[(current_row, current_col)] + 1
 # get euclidean OR
 # get manhattan  
 # expand node with lowest cost (NOT cumulative) + heuristic (manhattan or euclidean)
