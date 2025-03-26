@@ -41,7 +41,6 @@ class Utils:
 
     def reconstruct_path(parent, start, end):
         if end not in parent:
-            print("No path found!")
             return []
 
         path = []
@@ -51,8 +50,7 @@ class Utils:
             current = parent[current]
         
         path.append(start)
-        path.reverse()
-        return path
+        return path[::-1]  
 
     def print_path(grid, path):
         grid_copy = [row[:] for row in grid]
@@ -106,7 +104,8 @@ class BFS:
 
 class UCS:
     def ucs(grid, rows, cols, start, end):
-        priority_queue = [(0, start)]
+        discovery_time = 0
+        priority_queue = [(0, discovery_time, start)]
         heapq.heapify(priority_queue)
         
         cumulative_cost = {start: 0}
@@ -115,7 +114,7 @@ class UCS:
         visited = set()
 
         while priority_queue:
-            current_cost, (current_row, current_col) = heapq.heappop(priority_queue)
+            current_cost, _, (current_row, current_col) = heapq.heappop(priority_queue)
             current = (current_row, current_col)
 
             if current in visited:
@@ -129,19 +128,17 @@ class UCS:
             for neighbour in Utils.get_neighbours(current_row, current_col, rows, cols, grid):
                 visit_counts[neighbour] = visit_counts.get(neighbour, 0) + 1
                 
-                # Calculate elevation difference
                 current_elevation = grid[current_row][current_col]
                 neighbour_elevation = grid[neighbour[0]][neighbour[1]]
                 elevation_diff = neighbour_elevation - current_elevation
                 
-                # Cost is 1 if downhill/level, or 1 + elevation difference if uphill
                 edge_cost = 1 if elevation_diff <= 0 else 1 + elevation_diff
                 new_cost = cumulative_cost[current] + edge_cost
                 
-                # If neighbor not yet reached or we found a cheaper path
                 if neighbour not in cumulative_cost or new_cost < cumulative_cost[neighbour]:
                     cumulative_cost[neighbour] = new_cost
-                    heapq.heappush(priority_queue, (new_cost, neighbour))
+                    discovery_time += 1
+                    heapq.heappush(priority_queue, (new_cost, discovery_time, neighbour))
                     parent[neighbour] = current
 
         path = Utils.reconstruct_path(parent, start, end)
@@ -158,30 +155,43 @@ class AStar:
 
     def astar(grid, rows, cols, start, end, heuristic="manhattan"):
         heuristic_func = AStar.manhattan if heuristic == "manhattan" else AStar.euclidean
-        priority_queue = [(0, start)]
+        discovery_time = 0
+        priority_queue = [(0, discovery_time, start)]
         heapq.heapify(priority_queue)
         
         cumulative_cost = {start: 0}
         parent = {}
-        visit_counts = {start: 1} 
-        
-        while priority_queue:
-            current_cost, (current_row, current_col) = heapq.heappop(priority_queue)
+        visit_counts = {start: 1}
+        visited = set()
 
-            if (current_row, current_col) == end:
+        while priority_queue:
+            current_cost, _, (current_row, current_col) = heapq.heappop(priority_queue)
+            current = (current_row, current_col)
+
+            if current in visited:
+                continue
+
+            visited.add(current)
+
+            if current == end:
                 break
 
             for neighbour in Utils.get_neighbours(current_row, current_col, rows, cols, grid):
                 visit_counts[neighbour] = visit_counts.get(neighbour, 0) + 1
-                new_cost = cumulative_cost[(current_row, current_col)] + grid[neighbour[0]][neighbour[1]]
-                if grid[neighbour[0]][neighbour[1]] < grid[current_row][current_col]:
-                    new_cost = cumulative_cost[(current_row, current_col)] + 1
-
+                
+                current_elevation = grid[current_row][current_col]
+                neighbour_elevation = grid[neighbour[0]][neighbour[1]]
+                elevation_diff = neighbour_elevation - current_elevation
+                
+                edge_cost = 1 if elevation_diff <= 0 else 1 + elevation_diff
+                new_cost = cumulative_cost[current] + edge_cost
+                
                 if neighbour not in cumulative_cost or new_cost < cumulative_cost[neighbour]:
-                    cumulative_cost[neighbour] = new_cost 
+                    cumulative_cost[neighbour] = new_cost
                     priority = new_cost + heuristic_func(neighbour[0], neighbour[1], end)
-                    heapq.heappush(priority_queue, (new_cost, neighbour))
-                    parent[neighbour] = (current_row, current_col)
+                    discovery_time += 1
+                    heapq.heappush(priority_queue, (priority, discovery_time, neighbour))
+                    parent[neighbour] = current
 
         path = Utils.reconstruct_path(parent, start, end)
         return path, visit_counts
@@ -203,10 +213,12 @@ def main():
             path, _ = AStar.astar(grid, rows, cols, start, end, heuristic='manhattan')
         elif algorithm == "astar" and heuristic == "euclidean":
             path, _ = AStar.astar(grid, rows, cols, start, end, heuristic='euclidean')
-        Utils.print_path(grid,path)
+        if path != []:
+            Utils.print_path(grid,path)
+        else:
+            print("null")
             
     if mode == "debug":
-        
         if algorithm == "bfs":
             path, visit_counts = BFS.bfs(grid, rows, cols, start, end)
         elif algorithm == "ucs":
@@ -215,8 +227,11 @@ def main():
             path, visit_counts = AStar.astar(grid, rows, cols, start, end, heuristic='manhattan')
         elif algorithm == "astar" and heuristic == "euclidean":
             path, visit_counts = AStar.astar(grid, rows, cols, start, end, heuristic='euclidean')
-        print('path:')
-        Utils.print_path(grid, path) 
+        if path != []:
+            print('path:')
+            Utils.print_path(grid, path) 
+        else:
+            print("null")
         Utils.print_visit_counts(grid, visit_counts)
 
 if __name__ == "__main__":
