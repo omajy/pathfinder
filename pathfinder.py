@@ -1,6 +1,3 @@
-STUDENT_ID = 'a1850943'
-DEGREE = 'UG'
-
 import sys
 from collections import deque 
 import heapq
